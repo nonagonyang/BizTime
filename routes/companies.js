@@ -16,18 +16,28 @@ router.get("/", async function(req, res, next) {
   });
 
 /** GET /[code] - return data about one company: `{company: company}` */
+// Update: when viewing details for a company, you can see the names of the industries for that company
 
-router.get("/:code", async function(req, res, next) {
+router.get("/:company_code", async function(req, res, next) {
     try {
       const companyQuery = await db.query(
-        "SELECT code, name FROM companies WHERE code = $1", [req.params.code]);
-  
+        `SELECT c.company_code, c.company_name,c.company_description,i.industry
+        FROM companies AS c
+        LEFT JOIN companies_industries AS ci
+        ON c.company_code = ci.company_code
+        LEFT JOIN industries AS i 
+        ON i.industry_code=ci.industry_code
+        WHERE c.company_code = $1`, [req.params.company_code]);
+
       if (companyQuery.rows.length === 0) {
-        let notFoundError = new Error(`There is no company with code of '${req.params.code}`);
+        let notFoundError = new Error(`There is no company with code of '${req.params.company_code}`);
         notFoundError.status = 404;
         throw notFoundError;
       }
-      return res.json({ company: companyQuery.rows[0] });
+      let { company_code, company_name, company_description } = companyQuery.rows[0];
+      let industries = companyQuery.rows.map(r => r.industry);
+
+      return res.json({ company_code, company_name, company_description,industries});
     } catch (err) {
       return next(err);
     }
